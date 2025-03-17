@@ -112,8 +112,8 @@ describe('integration tests', function (this: ISuite) {
   });
 
   afterAll(async () => {
-    await browser.close();
-    await server.close();
+    await browser?.close();
+    await server?.close();
   });
 
   for (const html of htmls) {
