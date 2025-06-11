@@ -1,3 +1,9 @@
+## 0.0.20 - 2025-06-11
+
+- chore: to trigger release (#81)
+- chore: release rrweb-player (#80)
+- fix: getting packages in step (#79)
+
 ## 0.0.19 - 2025-06-11
 
 - fix: get packages on same versions (#78)
