@@ -1,3 +1,7 @@
+## 0.0.19 - 2025-06-11
+
+- fix: get packages on same versions (#78)
+
 ## 0.0.18 - 2025-06-11
 
 - fix: correct version bumping (#77)
