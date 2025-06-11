@@ -108,8 +108,13 @@ export function stringifyStylesheet(s: CSSStyleSheet): string | null {
     if (!rules) {
       return null;
     }
+    let sheetHref = s.href;
+    if (!sheetHref && s.ownerNode && s.ownerNode.ownerDocument) {
+      // an inline <style> element
+      sheetHref = s.ownerNode.ownerDocument.baseURI;
+    }
     const stringifiedRules = Array.from(rules, (rule: CSSRule) =>
-      stringifyRule(rule, s.href),
+      stringifyRule(rule, sheetHref),
     ).join('');
     return fixBrowserCompatibilityIssuesInCSS(stringifiedRules);
   } catch (error) {
@@ -130,9 +135,17 @@ export function stringifyRule(rule: CSSRule, sheetHref: string | null): string {
     } catch (error) {
       importStringified = rule.cssText;
     }
-    if (rule.styleSheet.href) {
-      // url()s within the imported stylesheet are relative to _that_ sheet's href
-      return absolutifyURLs(importStringified, rule.styleSheet.href);
+    // if importStringified is not null,
+    // there should be a stylesheet and a rule here,
+    // but we avoid errors in this method by checking for null
+    // see https://github.com/rrweb-io/rrweb/pull/1686
+    try {
+      if (importStringified && rule.styleSheet?.href) {
+        // url()s within the imported stylesheet are relative to _that_ sheet's href
+        return absolutifyURLs(importStringified, rule.styleSheet.href);
+      }
+    } catch {
+      // swallow this, we'll return null
     }
     return importStringified;
   } else {
