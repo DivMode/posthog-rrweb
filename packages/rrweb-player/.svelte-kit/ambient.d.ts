@@ -97,7 +97,6 @@ declare module '$env/static/private' {
 	export const npm_package_types: string;
 	export const npm_package_homepage: string;
 	export const DOTNET_SKIP_FIRST_TIME_EXPERIENCE: string;
-	export const GOROOT_1_21_X64: string;
 	export const JAVA_HOME_17_X64: string;
 	export const ImageVersion: string;
 	export const npm_package_exports___hooks_types: string;
@@ -114,6 +113,7 @@ declare module '$env/static/private' {
 	export const JOURNAL_STREAM: string;
 	export const GITHUB_WORKFLOW: string;
 	export const _: string;
+	export const GOROOT_1_24_X64: string;
 	export const npm_package_scripts_lint: string;
 	export const npm_config_registry: string;
 	export const ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE: string;
@@ -344,7 +344,6 @@ declare module '$env/dynamic/private' {
 		npm_package_types: string;
 		npm_package_homepage: string;
 		DOTNET_SKIP_FIRST_TIME_EXPERIENCE: string;
-		GOROOT_1_21_X64: string;
 		JAVA_HOME_17_X64: string;
 		ImageVersion: string;
 		npm_package_exports___hooks_types: string;
@@ -361,6 +360,7 @@ declare module '$env/dynamic/private' {
 		JOURNAL_STREAM: string;
 		GITHUB_WORKFLOW: string;
 		_: string;
+		GOROOT_1_24_X64: string;
 		npm_package_scripts_lint: string;
 		npm_config_registry: string;
 		ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE: string;

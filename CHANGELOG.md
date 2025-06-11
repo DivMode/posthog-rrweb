@@ -1,3 +1,8 @@
+## 0.0.21 - 2025-06-11
+
+- adopt a couple of rrweb proposed PRs (#82)
+- fix: css bug identified in user site (#83)
+
 ## 0.0.20 - 2025-06-11
 
 - chore: to trigger release (#81)
