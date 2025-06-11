@@ -1,3 +1,7 @@
+## 0.0.18 - 2025-06-11
+
+- fix: correct version bumping (#77)
+
 ## 0.0.17 - 2025-06-09
 
 - Bump version to 0.0.17
