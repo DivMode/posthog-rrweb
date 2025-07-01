@@ -1,3 +1,7 @@
+## 0.0.22 - 2025-07-01
+
+- fix: consistent logging in player (#84)
+
 ## 0.0.21 - 2025-06-11
 
 - adopt a couple of rrweb proposed PRs (#82)

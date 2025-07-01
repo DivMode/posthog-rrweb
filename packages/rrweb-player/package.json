@@ -1,6 +1,6 @@
 {
     "name": "@posthog/rrweb-player",
-    "version": "0.0.21",
+    "version": "0.0.22",
     "devDependencies": {
         "@posthog/rrweb-types": "*",
         "@sveltejs/adapter-auto": "^3.0.0",
