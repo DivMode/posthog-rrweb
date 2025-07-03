@@ -1,3 +1,7 @@
+## 0.0.23 - 2025-07-03
+
+- fix: missing nodes and parents perf (#85)
+
 ## 0.0.22 - 2025-07-01
 
 - fix: consistent logging in player (#84)
