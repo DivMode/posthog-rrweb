@@ -1,3 +1,7 @@
+## 0.0.24 - 2025-07-18
+
+- fix: in applyStyleDeclaration during replay we `as unknown as` and explode (#86)
+
 ## 0.0.23 - 2025-07-03
 
 - fix: missing nodes and parents perf (#85)
