@@ -25,6 +25,10 @@ export class IframeManager {
   private loadListener?: (iframeEl: HTMLIFrameElement) => unknown;
   private stylesheetManager: StylesheetManager;
   private recordCrossOriginIframes: boolean;
+  private messageHandler: (message: MessageEvent) => void;
+  // Map window to handler for cleanup - windows are browser-owned and won't prevent GC
+  private nestedIframeListeners: Map<Window, (message: MessageEvent) => void> =
+    new Map();
 
   constructor(options: {
     mirror: Mirror;
@@ -43,8 +47,9 @@ export class IframeManager {
       ),
     );
     this.mirror = options.mirror;
+    this.messageHandler = this.handleMessage.bind(this);
     if (this.recordCrossOriginIframes) {
-      window.addEventListener('message', this.handleMessage.bind(this));
+      window.addEventListener('message', this.messageHandler);
     }
   }
 
@@ -77,11 +82,16 @@ export class IframeManager {
     });
 
     // Receive messages (events) coming from cross-origin iframes that are nested in this same-origin iframe.
-    if (this.recordCrossOriginIframes)
-      iframeEl.contentWindow?.addEventListener(
-        'message',
-        this.handleMessage.bind(this),
-      );
+    const win = iframeEl.contentWindow;
+    if (
+      this.recordCrossOriginIframes &&
+      win &&
+      !this.nestedIframeListeners.has(win)
+    ) {
+      const nestedHandler = this.handleMessage.bind(this);
+      this.nestedIframeListeners.set(win, nestedHandler);
+      win.addEventListener('message', nestedHandler);
+    }
 
     this.loadListener?.(iframeEl);
 
@@ -307,5 +317,17 @@ export class IframeManager {
         this.patchRootIdOnNode(child, rootId);
       });
     }
+  }
+
+  public destroy() {
+    if (this.recordCrossOriginIframes) {
+      window.removeEventListener('message', this.messageHandler);
+    }
+
+    // Clean up nested iframe listeners
+    this.nestedIframeListeners.forEach((handler, contentWindow) => {
+      contentWindow.removeEventListener('message', handler);
+    });
+    this.nestedIframeListeners.clear();
   }
 }
