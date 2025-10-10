@@ -1,3 +1,8 @@
+## 0.0.26 - 2025-10-10
+
+- fix: address memory leaks in replayer (#92)
+- fix: possible memory leaks in recorder (#91)
+
 ## 0.0.25 - 2025-08-05
 
 - fix(rrweb-snapshot): inserting doctype element (#88)

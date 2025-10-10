@@ -89,6 +89,7 @@ declare module '$env/static/private' {
 	export const npm_package_devDependencies_typescript: string;
 	export const npm_package_devDependencies__types_connect: string;
 	export const npm_package_description: string;
+	export const JAVA_HOME_25_X64: string;
 	export const NVM_DIR: string;
 	export const npm_package_readmeFilename: string;
 	export const npm_package_types: string;
@@ -322,6 +323,7 @@ declare module '$env/dynamic/private' {
 		npm_package_devDependencies_typescript: string;
 		npm_package_devDependencies__types_connect: string;
 		npm_package_description: string;
+		JAVA_HOME_25_X64: string;
 		NVM_DIR: string;
 		npm_package_readmeFilename: string;
 		npm_package_types: string;
