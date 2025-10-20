@@ -114,6 +114,7 @@ declare module '$env/static/private' {
 	export const npm_package_scripts_lint: string;
 	export const npm_config_registry: string;
 	export const ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE: string;
+	export const GOROOT_1_25_X64: string;
 	export const GITHUB_RUN_ID: string;
 	export const GITHUB_REF_TYPE: string;
 	export const BOOTSTRAP_HASKELL_NONINTERACTIVE: string;
@@ -348,6 +349,7 @@ declare module '$env/dynamic/private' {
 		npm_package_scripts_lint: string;
 		npm_config_registry: string;
 		ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE: string;
+		GOROOT_1_25_X64: string;
 		GITHUB_RUN_ID: string;
 		GITHUB_REF_TYPE: string;
 		BOOTSTRAP_HASKELL_NONINTERACTIVE: string;

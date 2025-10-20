@@ -1,3 +1,8 @@
+## 0.0.27 - 2025-10-20
+
+- fix: remove load listener from iframemanager to avoid leaking memory (#94)
+- chore: switch to fine-grained PAT (#93)
+
 ## 0.0.26 - 2025-10-10
 
 - fix: address memory leaks in replayer (#92)
