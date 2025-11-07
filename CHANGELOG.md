@@ -1,3 +1,8 @@
+## 0.0.28 - 2025-11-07
+
+- fix: do not bundle css parsing into recorder (#96)
+- fix: pass data quality options to toDataURL (#95)
+
 ## 0.0.27 - 2025-10-20
 
 - fix: remove load listener from iframemanager to avoid leaking memory (#94)
