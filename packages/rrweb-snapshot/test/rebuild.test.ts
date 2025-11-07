@@ -4,13 +4,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { beforeEach, describe, expect as _expect, it, vi } from 'vitest';
-import {
-  adaptCssForReplay,
-  buildNodeWithSN,
-  createCache,
-} from '../src/rebuild';
+import { buildNodeWithSN, createCache } from '../src/rebuild';
+import { adaptCssForReplay } from '../src/utils-rebuild';
 import { NodeType } from '@posthog/rrweb-types';
-import { createMirror, Mirror, normalizeCssString } from '../src/utils';
+import { createMirror, Mirror } from '../src/utils';
 
 const expect = _expect as unknown as {
   <T = unknown>(actual: T): {
