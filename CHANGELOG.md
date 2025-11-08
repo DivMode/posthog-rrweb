@@ -1,3 +1,8 @@
+## 0.0.29 - 2025-11-08
+
+- fix: reset mirror when stopping (#100)
+- revert: "fix: do not bundle css parsing into recorder" (#98)
+
 ## 0.0.28 - 2025-11-07
 
 - fix: do not bundle css parsing into recorder (#96)
