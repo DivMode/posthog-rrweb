@@ -1,3 +1,7 @@
+## 0.0.30 - 2025-11-08
+
+- feat: resize or replace base64 images based on config (#99)
+
 ## 0.0.29 - 2025-11-08
 
 - fix: reset mirror when stopping (#100)
