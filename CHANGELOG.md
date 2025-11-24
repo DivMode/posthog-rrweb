@@ -1,3 +1,7 @@
+## 0.0.31 - 2025-11-24
+
+- fix: don't ship postcss with the recorder (#101)
+
 ## 0.0.30 - 2025-11-08
 
 - feat: resize or replace base64 images based on config (#99)
