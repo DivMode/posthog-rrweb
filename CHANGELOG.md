@@ -1,3 +1,7 @@
+## 0.0.35 - 2026-01-13
+
+- Bump version to 0.0.35
+
 ## 0.0.32 - 2025-11-24
 
 - chore: to get a new version (#103)
