@@ -1,3 +1,7 @@
+## 0.0.36 - 2026-01-21
+
+- fix(replay): clear weakmaps in destroy method (#122)
+
 ## 0.0.35 - 2026-01-13
 
 - Bump version to 0.0.35
