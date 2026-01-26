@@ -1,5 +1,5 @@
 import type { eventWithTime } from '@posthog/rrweb-types';
-import type { Replayer, playerConfig } from '@posthog/rrweb-replay';
+import type { Replayer, playerConfig } from '@posthog/rrweb';
 import type { Mirror } from '@posthog/rrweb-snapshot';
 
 export type RRwebPlayerOptions = {

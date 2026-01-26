@@ -548,12 +548,12 @@ importers:
 
   packages/rrweb-player:
     dependencies:
+      '@posthog/rrweb':
+        specifier: workspace:*
+        version: link:../rrweb
       '@posthog/rrweb-packer':
         specifier: workspace:*
         version: link:../packer
-      '@posthog/rrweb-replay':
-        specifier: workspace:*
-        version: link:../replay
       '@posthog/rrweb-snapshot':
         specifier: workspace:*
         version: link:../rrweb-snapshot

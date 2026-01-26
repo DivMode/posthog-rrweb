@@ -94,6 +94,7 @@ jobs:
             "./packages/utils"
             "./packages/rrweb-snapshot"
             "./packages/rrdom"
+            "./packages/packer"
             "./packages/record"
             "./packages/rrweb-player"
             "./packages/rrweb"

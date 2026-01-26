@@ -21,7 +21,7 @@
     },
     "dependencies": {
         "@tsconfig/svelte": "^1.0.0",
-        "@posthog/rrweb-replay": "workspace:*",
+        "@posthog/rrweb": "workspace:*",
         "@posthog/rrweb-packer": "workspace:*",
         "@posthog/rrweb-snapshot": "workspace:*"
     },

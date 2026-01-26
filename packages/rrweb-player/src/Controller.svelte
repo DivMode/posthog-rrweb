@@ -5,7 +5,7 @@
     Replayer,
     PlayerMachineState,
     SpeedMachineState,
-  } from '@posthog/rrweb-replay';
+  } from '@posthog/rrweb';
   import {
     onMount,
     onDestroy,
