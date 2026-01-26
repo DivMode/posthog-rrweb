@@ -23,5 +23,6 @@ module.exports = {
   rules: {
     'tsdoc/syntax': 'warn',
     '@typescript-eslint/prefer-as-const': 'warn',
+    '@typescript-eslint/no-unnecessary-type-assertion': 'off',
   },
 };
