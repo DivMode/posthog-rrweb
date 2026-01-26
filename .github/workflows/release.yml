@@ -135,7 +135,8 @@ jobs:
               echo "  Skipping $PKG_NAME@$PKG_VERSION - already published"
             else
               echo "  Publishing $PKG_NAME@$PKG_VERSION..."
-              npm publish --access public --tag $TAG
+              # pnpm publish shells out to npm (handles workspace:* and OIDC)
+              pnpm publish --access public --tag $TAG --no-git-checks
             fi
 
             cd -
