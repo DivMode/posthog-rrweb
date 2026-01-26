@@ -98,15 +98,9 @@ jobs:
           fi
 
           # Publish packages in dependency order
+          # TODO: Add remaining packages after OIDC is configured for each
           PACKAGES=(
             "./packages/types"
-            "./packages/utils"
-            "./packages/rrweb-snapshot"
-            "./packages/rrdom"
-            "./packages/rrweb"
-            "./packages/record"
-            "./packages/rrweb-player"
-            "./packages/plugins/rrweb-plugin-console-record"
           )
 
           TAG="${{ inputs.snapshot == true && 'snapshot' || 'latest' }}"
@@ -120,7 +114,7 @@ jobs:
           echo "Restoring original package.json files..."
           git checkout -- ./packages/*/package.json ./packages/plugins/*/package.json
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ''  # Clear to allow OIDC
 
       - name: Create GitHub release
         if: steps.npm_check.outputs.publish_needed == 'true' && steps.release_exists.outputs.exists == 'false' && inputs.snapshot != true
