@@ -89,25 +89,6 @@ jobs:
       - name: Publish to npm as @divmode (OIDC)
         if: steps.npm_check.outputs.publish_needed == 'true'
         run: |
-          # Temporarily patch @posthog -> @divmode in package.json files
-          echo "Patching @posthog -> @divmode..."
-          find ./packages -name "package.json" -not -path "*/node_modules/*" -exec \
-            sed -i 's/@posthog\//@divmode\//g' {} \;
-
-          # Patch repository URL for OIDC provenance verification
-          echo "Patching repository URL PostHog -> DivMode..."
-          find ./packages -name "package.json" -not -path "*/node_modules/*" -exec \
-            sed -i 's/PostHog\/posthog-rrweb/DivMode\/posthog-rrweb/g' {} \;
-
-          # Update version if snapshot
-          if [ "${{ inputs.snapshot }}" == "true" ]; then
-            find ./packages -name "package.json" -not -path "*/node_modules/*" -exec \
-              sed -i 's/"version": "[^"]*"/"version": "${{ steps.version.outputs.version }}"/g' {} \;
-          fi
-
-          # Publish packages in dependency order (same as PostHog)
-          # OIDC Trusted Publishers must be configured for each package
-          # Run: npx --yes setup-npm-trusted-publish @divmode/PACKAGE_NAME
           PACKAGES=(
             "./packages/types"
             "./packages/utils"
@@ -120,31 +101,41 @@ jobs:
           )
 
           TAG="${{ inputs.snapshot == true && 'snapshot' || 'latest' }}"
+          VERSION="${{ steps.version.outputs.version }}"
 
           for PACKAGE in "${PACKAGES[@]}"; do
-            echo "Publishing $PACKAGE..."
             cd "$PACKAGE"
+            PKG_NAME=$(node -p "require('./package.json').name" | sed 's/@posthog/@divmode/')
 
-            # Get package name from package.json
-            PKG_NAME=$(node -p "require('./package.json').name")
-            PKG_VERSION=$(node -p "require('./package.json').version")
-
-            # Check if this version already exists
-            EXISTING=$(npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null || echo "")
-            if [ "$EXISTING" == "$PKG_VERSION" ]; then
-              echo "  Skipping $PKG_NAME@$PKG_VERSION - already published"
-            else
-              echo "  Publishing $PKG_NAME@$PKG_VERSION..."
-              # pnpm publish shells out to npm (handles workspace:* and OIDC)
-              pnpm publish --access public --tag $TAG --no-git-checks
+            # Check if already published
+            EXISTING=$(npm view "$PKG_NAME@$VERSION" version 2>/dev/null || echo "")
+            if [ "$EXISTING" == "$VERSION" ]; then
+              echo "Skipping $PKG_NAME@$VERSION - already published"
+              cd -
+              continue
             fi
+
+            echo "Publishing $PKG_NAME@$VERSION..."
+
+            # pnpm pack resolves workspace:* to actual versions
+            TARBALL=$(pnpm pack | tail -1)
+
+            # Extract, patch @posthog -> @divmode, repack
+            mkdir -p /tmp/pkg
+            tar -xzf "$TARBALL" -C /tmp/pkg
+            sed -i 's/@posthog\//@divmode\//g' /tmp/pkg/package/package.json
+            sed -i 's/PostHog\/posthog-rrweb/DivMode\/posthog-rrweb/g' /tmp/pkg/package/package.json
+            rm "$TARBALL"
+            TARBALL="${PKG_NAME//\//-}-$VERSION.tgz"
+            tar -czf "$TARBALL" -C /tmp/pkg package
+            rm -rf /tmp/pkg
+
+            # npm publish for OIDC
+            npm publish "$TARBALL" --access public --tag $TAG
+            rm -f "$TARBALL"
 
             cd -
           done
-
-          # Restore original package.json files
-          echo "Restoring original package.json files..."
-          git checkout -- ./packages/*/package.json ./packages/plugins/*/package.json
 
       - name: Create GitHub release
         if: steps.npm_check.outputs.publish_needed == 'true' && steps.release_exists.outputs.exists == 'false' && inputs.snapshot != true
