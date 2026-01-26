@@ -1,89 +1,143 @@
-name: Release
+name: Release rrweb
 
 on:
   push:
-    branches:
-      main
-
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+    branches: [main]
+    paths:
+      - 'packages/*/package.json'
+  workflow_dispatch:
+    inputs:
+      snapshot:
+        description: "Publish as snapshot"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
-  check-package-version:
-    name: Check package version and detect an update
-    runs-on: ubuntu-latest
-    outputs:
-      committed-version: ${{ steps.check-package-version.outputs.committed-version }}
-      published-version: ${{ steps.check-package-version.outputs.published-version }}
-      is-new-version: ${{ steps.check-package-version.outputs.is-new-version }}
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v4
-
-      - name: Check package version and detect an update
-        id: check-package-version
-        uses: PostHog/check-package-version@v2
-        with:
-          # only supports one path - we'll cross that bridge when we come to it
-          path: 'packages/rrweb'
-
   release:
-    name: Release (if new version)
     runs-on: ubuntu-latest
-    needs: check-package-version
-    if: needs.check-package-version.outputs.is-new-version == 'true'
     permissions:
-      contents: read
+      contents: write
       id-token: write
     env:
-      COMMITTED_VERSION: ${{ needs.check-package-version.outputs.committed-version }}
-      PUBLISHED_VERSION: ${{ needs.check-package-version.outputs.published-version }}
       NPM_CONFIG_PROVENANCE: true
+
     steps:
-      - name: Checkout Repo
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
-      - name: Setup Node.js lts/*
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: '22'
           cache: 'pnpm'
           registry-url: https://registry.npmjs.org
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: npm release
-        run: |
-          $GITHUB_WORKSPACE/scripts/npm-release.sh
-          
+      - name: Build all packages
+        run: pnpm run build:all
 
-#
-#          - name: Create GitHub release
-#            env:
-#              GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#            run: |
-#              # read from the first until the second header in the changelog file
-#              # this assumes the formatting of the file
-#              # and that this workflow is always running for the most recent entry in the file
-#              LAST_CHANGELOG_ENTRY=$(awk -v defText="see CHANGELOG.md" '/^## /{if (flag) exit; flag=1} flag && /^##$/{exit} flag; END{if (!flag) print defText}' CHANGELOG.md)
-#              # the action we used to use was archived, and made it really difficult to create a release with a body
-#              # because the LAST_CHANGELOG_ENTRY contains bash special characters so passing it between steps
-#              # was a pain.
-#              # we can use the github cli to create a release with a body
-#              # all as part of one step
-#              gh api \
-#                --method POST \
-#                -H "Accept: application/vnd.github+json" \
-#                -H "X-GitHub-Api-Version: 2022-11-28" \
-#                /repos/posthog/posthog-js/releases \
-#                -f tag_name="v${{ env.COMMITTED_VERSION }}" \
-#              -f target_commitish='main' \
-#              -f name="${{ env.COMMITTED_VERSION }}" \
-#              -f body="$LAST_CHANGELOG_ENTRY" \
-#              -F draft=false \
-#              -F prerelease=false \
-#              -F generate_release_notes=false
-#
+      - name: Get package version
+        id: version
+        run: |
+          if [ "${{ inputs.snapshot }}" == "true" ]; then
+            VERSION="0.0.0-$(date +%Y%m%d%H%M%S)"
+            echo "Using snapshot version: $VERSION"
+          else
+            VERSION=$(node -p "require('./packages/rrweb/package.json').version")
+            echo "Using package.json version: $VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if version exists on npm
+        id: npm_check
+        run: |
+          NPM_VERSION=$(npm view @divmode/rrweb version 2>/dev/null || echo "0.0.0")
+          CURRENT_VERSION="${{ steps.version.outputs.version }}"
+
+          if [ "$NPM_VERSION" != "$CURRENT_VERSION" ]; then
+            echo "publish_needed=true" >> $GITHUB_OUTPUT
+            echo "Package version $CURRENT_VERSION is new (npm has $NPM_VERSION)"
+          else
+            echo "publish_needed=false" >> $GITHUB_OUTPUT
+            echo "Package version $CURRENT_VERSION already exists on npm"
+          fi
+
+      - name: Check if release exists
+        id: release_exists
+        if: steps.npm_check.outputs.publish_needed == 'true' && inputs.snapshot != true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view ${{ steps.version.outputs.tag }} >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to npm as @divmode (OIDC)
+        if: steps.npm_check.outputs.publish_needed == 'true'
+        run: |
+          # Temporarily patch @posthog -> @divmode in package.json files
+          echo "Patching @posthog -> @divmode..."
+          find ./packages -name "package.json" -not -path "*/node_modules/*" -exec \
+            sed -i 's/@posthog\//@divmode\//g' {} \;
+
+          # Update version if snapshot
+          if [ "${{ inputs.snapshot }}" == "true" ]; then
+            find ./packages -name "package.json" -not -path "*/node_modules/*" -exec \
+              sed -i 's/"version": "[^"]*"/"version": "${{ steps.version.outputs.version }}"/g' {} \;
+          fi
+
+          # Publish packages in dependency order
+          PACKAGES=(
+            "./packages/types"
+            "./packages/utils"
+            "./packages/rrweb-snapshot"
+            "./packages/rrdom"
+            "./packages/rrweb"
+            "./packages/record"
+            "./packages/rrweb-player"
+            "./packages/plugins/rrweb-plugin-console-record"
+          )
+
+          TAG="${{ inputs.snapshot == true && 'snapshot' || 'latest' }}"
+
+          for PACKAGE in "${PACKAGES[@]}"; do
+            echo "Publishing $PACKAGE..."
+            pnpm --filter "$PACKAGE" publish --access public --no-git-checks --tag $TAG
+          done
+
+          # Restore original package.json files
+          echo "Restoring original package.json files..."
+          git checkout -- ./packages/*/package.json ./packages/plugins/*/package.json
+        env:
+          NODE_AUTH_TOKEN: ''  # Clear to allow OIDC
+
+      - name: Create GitHub release
+        if: steps.npm_check.outputs.publish_needed == 'true' && steps.release_exists.outputs.exists == 'false' && inputs.snapshot != true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PREVIOUS_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName' || echo "")
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD | head -20 || echo "")
+            if [ -z "$COMMITS" ]; then
+              COMMITS="No notable changes"
+            fi
+          else
+            COMMITS="Initial release with closed shadow DOM support"
+          fi
+
+          gh release create ${{ steps.version.outputs.tag }} \
+            --title "rrweb v${{ steps.version.outputs.version }}" \
+            --notes "$COMMITS"

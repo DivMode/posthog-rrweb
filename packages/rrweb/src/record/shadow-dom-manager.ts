@@ -21,6 +21,10 @@ type BypassOptions = Omit<
   sampling: SamplingStrategy;
 };
 
+type ElementWithShadowRoot = Element & {
+  __rrClosedShadowRoot: ShadowRoot;
+};
+
 export class ShadowDomManager {
   private shadowDoms = new WeakSet<ShadowRoot>();
   private mutationCb: mutationCallBack;
@@ -130,12 +134,16 @@ export class ShadowDomManager {
         function (original: (init: ShadowRootInit) => ShadowRoot) {
           return function (this: Element, option: ShadowRootInit) {
             const sRoot = original.call(this, option);
+            // Store closed shadow roots so we can access them later
+            if (option.mode === 'closed') {
+              (this as ElementWithShadowRoot).__rrClosedShadowRoot = sRoot;
+            }
             // For the shadow dom elements in the document, monitor their dom mutations.
             // For shadow dom elements that aren't in the document yet,
             // we start monitoring them once their shadow dom host is appended to the document.
-            const shadowRootEl = dom.shadowRoot(this);
-            if (shadowRootEl && inDom(this))
-              manager.addShadowRoot(shadowRootEl, doc);
+            if (sRoot && inDom(this)) {
+              manager.addShadowRoot(sRoot, doc);
+            }
             return sRoot;
           };
         },
