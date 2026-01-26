@@ -107,14 +107,14 @@ jobs:
 
           for PACKAGE in "${PACKAGES[@]}"; do
             echo "Publishing $PACKAGE..."
-            pnpm --filter "$PACKAGE" publish --access public --no-git-checks --tag $TAG
+            cd "$PACKAGE"
+            npm publish --access public --tag $TAG
+            cd -
           done
 
           # Restore original package.json files
           echo "Restoring original package.json files..."
           git checkout -- ./packages/*/package.json ./packages/plugins/*/package.json
-        env:
-          NODE_AUTH_TOKEN: ''  # Clear to allow OIDC
 
       - name: Create GitHub release
         if: steps.npm_check.outputs.publish_needed == 'true' && steps.release_exists.outputs.exists == 'false' && inputs.snapshot != true
