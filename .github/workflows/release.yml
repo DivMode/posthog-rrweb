@@ -94,6 +94,11 @@ jobs:
           find ./packages -name "package.json" -not -path "*/node_modules/*" -exec \
             sed -i 's/@posthog\//@divmode\//g' {} \;
 
+          # Patch repository URL for OIDC provenance verification
+          echo "Patching repository URL PostHog -> DivMode..."
+          find ./packages -name "package.json" -not -path "*/node_modules/*" -exec \
+            sed -i 's/PostHog\/posthog-rrweb/DivMode\/posthog-rrweb/g' {} \;
+
           # Update version if snapshot
           if [ "${{ inputs.snapshot }}" == "true" ]; then
             find ./packages -name "package.json" -not -path "*/node_modules/*" -exec \
