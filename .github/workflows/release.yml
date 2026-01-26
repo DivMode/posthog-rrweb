@@ -105,10 +105,18 @@ jobs:
               sed -i 's/"version": "[^"]*"/"version": "${{ steps.version.outputs.version }}"/g' {} \;
           fi
 
-          # Publish packages in dependency order
-          # TODO: Add remaining packages after OIDC is configured for each
+          # Publish packages in dependency order (same as PostHog)
+          # OIDC Trusted Publishers must be configured for each package
+          # Run: npx --yes setup-npm-trusted-publish @divmode/PACKAGE_NAME
           PACKAGES=(
             "./packages/types"
+            "./packages/utils"
+            "./packages/rrweb-snapshot"
+            "./packages/rrdom"
+            "./packages/record"
+            "./packages/rrweb-player"
+            "./packages/rrweb"
+            "./packages/plugins/rrweb-plugin-console-record"
           )
 
           TAG="${{ inputs.snapshot == true && 'snapshot' || 'latest' }}"
