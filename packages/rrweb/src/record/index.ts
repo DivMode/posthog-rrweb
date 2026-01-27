@@ -262,9 +262,17 @@ function record<T = eventWithTime>(
 
   const wrappedMutationEmit = (m: mutationCallbackParam) => {
     // Clean up removed iframes from the attachedIframes Map to prevent memory leaks
-    if (recordCrossOriginIframes && m.removes) {
+    // Only clean up iframes that are actually being removed, not moved
+    // (moved iframes appear in both removes and adds)
+    if (recordCrossOriginIframes && m.removes && m.removes.length > 0) {
+      // Only create the Set if there are adds to check against
+      const addedIds =
+        m.adds.length > 0 ? new Set(m.adds.map((add) => add.node.id)) : null;
       m.removes.forEach(({ id }) => {
-        iframeManager.removeIframeById(id);
+        // Only remove if not being re-added (i.e., actually removed, not moved)
+        if (!addedIds || !addedIds.has(id)) {
+          iframeManager.removeIframeById(id);
+        }
       });
     }
 

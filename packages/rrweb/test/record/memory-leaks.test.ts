@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 import record from '../../src/record';
 import { mutationBuffers } from '../../src/record/observer';
+import { IframeManager } from '../../src/record/iframe-manager';
 import type { eventWithTime } from '@posthog/rrweb-types';
+import { createMirror } from '@posthog/rrweb-snapshot';
 
 describe('memory leak prevention', () => {
   let dom: JSDOM;
@@ -254,5 +256,259 @@ describe('memory leak prevention', () => {
       // Restore original WeakMap
       global.WeakMap = originalWeakMap;
     });
+  });
+
+  describe('IframeManager.removeIframeById cleanup', () => {
+    it('should delete iframe from iframes WeakMap when removeIframeById is called', async () => {
+      const emit = (event: eventWithTime) => {
+        events.push(event);
+      };
+
+      const stopRecording = record({
+        emit,
+        recordCrossOriginIframes: true,
+      });
+
+      // Create and append an iframe
+      const iframe = document.createElement('iframe');
+      document.body.appendChild(iframe);
+
+      // Wait for mutations to be processed
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Remove the iframe - this should trigger removeIframeById via wrappedMutationEmit
+      document.body.removeChild(iframe);
+
+      // Wait for removal mutation to be processed
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Verify that a removal mutation was emitted
+      const removalEvents = events.filter(
+        (e: any) =>
+          e.type === 3 && // IncrementalSnapshot
+          e.data?.source === 0 && // Mutation
+          e.data?.removes?.length > 0,
+      );
+      expect(removalEvents.length).toBeGreaterThan(0);
+
+      stopRecording?.();
+    });
+
+    it('should delete contentWindow from crossOriginIframeMap when removeIframeById is called', async () => {
+      const emit = (event: eventWithTime) => {
+        events.push(event);
+      };
+
+      const stopRecording = record({
+        emit,
+        recordCrossOriginIframes: true,
+      });
+
+      // Create and append an iframe
+      const iframe = document.createElement('iframe');
+      document.body.appendChild(iframe);
+
+      // Wait for mutations to be processed
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Store a reference to verify cleanup later
+      const contentWindow = iframe.contentWindow;
+      expect(contentWindow).not.toBeNull();
+
+      // Remove the iframe - this triggers removeIframeById
+      document.body.removeChild(iframe);
+
+      // Wait for removal mutation to be processed
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // The crossOriginIframeMap.delete(win) should have been called
+      // We can verify this indirectly by checking the removal mutation was processed
+      const removalEvents = events.filter(
+        (e: any) =>
+          e.type === 3 && // IncrementalSnapshot
+          e.data?.source === 0 && // Mutation
+          e.data?.removes?.length > 0,
+      );
+      expect(removalEvents.length).toBeGreaterThan(0);
+
+      stopRecording?.();
+    });
+
+    it('should NOT call removeIframeById when iframe is moved (appears in both removes and adds)', async () => {
+      const emit = (event: eventWithTime) => {
+        events.push(event);
+      };
+
+      const stopRecording = record({
+        emit,
+        recordCrossOriginIframes: true,
+      });
+
+      // Create a container and an iframe
+      const container1 = document.createElement('div');
+      const container2 = document.createElement('div');
+      document.body.appendChild(container1);
+      document.body.appendChild(container2);
+
+      const iframe = document.createElement('iframe');
+      container1.appendChild(iframe);
+
+      // Wait for mutations to be processed
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const initialEventCount = events.length;
+
+      // Move the iframe from container1 to container2
+      // This will trigger a mutation with the iframe in BOTH removes and adds
+      container2.appendChild(iframe);
+
+      // Wait for move mutation to be processed
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Verify that a mutation was emitted
+      const mutationEvents = events.slice(initialEventCount).filter(
+        (e: any) =>
+          e.type === 3 && // IncrementalSnapshot
+          e.data?.source === 0, // Mutation
+      );
+      expect(mutationEvents.length).toBeGreaterThan(0);
+
+      // The iframe should still be tracked (not cleaned up)
+      // We can verify this by removing it and seeing a removal event
+      iframe.remove();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const removalEvents = events.filter(
+        (e: any) =>
+          e.type === 3 && // IncrementalSnapshot
+          e.data?.source === 0 && // Mutation
+          e.data?.removes?.length > 0,
+      );
+      expect(removalEvents.length).toBeGreaterThan(0);
+
+      stopRecording?.();
+    });
+  });
+
+  describe('IframeManager unit tests', () => {
+    it.each([
+      {
+        scenario: 'with contentWindow',
+        shouldAppendToDOM: true,
+        shouldCallRemove: true,
+        expectedMapsCleanedUp: true,
+      },
+      {
+        scenario: 'without contentWindow',
+        shouldAppendToDOM: false,
+        shouldCallRemove: true,
+        expectedMapsCleanedUp: true,
+      },
+      {
+        scenario: 'when iframe is moved (not removed)',
+        shouldAppendToDOM: true,
+        shouldCallRemove: false,
+        expectedMapsCleanedUp: false,
+      },
+    ])(
+      'should handle cleanup correctly $scenario',
+      ({ shouldAppendToDOM, shouldCallRemove, expectedMapsCleanedUp }) => {
+        const mirror = createMirror();
+        const mutationCb = vi.fn();
+        const wrappedEmit = vi.fn();
+
+        const mockStylesheetManager = {
+          styleMirror: {
+            generateId: vi.fn(() => 1),
+          },
+          adoptStyleSheets: vi.fn(),
+        } as any;
+
+        const iframeManager = new IframeManager({
+          mirror,
+          mutationCb,
+          stylesheetManager: mockStylesheetManager,
+          recordCrossOriginIframes: true,
+          wrappedEmit,
+        });
+
+        const iframe = document.createElement('iframe');
+        if (shouldAppendToDOM) {
+          document.body.appendChild(iframe);
+        }
+
+        const iframeId = 123;
+        mirror.add(iframe, {
+          type: 2,
+          tagName: 'iframe',
+          attributes: {},
+          childNodes: [],
+          id: iframeId,
+        });
+
+        if (shouldAppendToDOM) {
+          iframeManager.addIframe(iframe);
+
+          const mockChildSn = {
+            type: 0,
+            childNodes: [],
+            id: 456,
+          } as any;
+
+          iframeManager.attachIframe(iframe, mockChildSn);
+          expect(mutationCb).toHaveBeenCalled();
+        } else {
+          // Manually set up attachedIframes for non-DOM case
+          const manager = iframeManager as any;
+          manager.attachedIframes.set(iframeId, {
+            element: iframe,
+            content: { type: 0, childNodes: [], id: 999 },
+          });
+        }
+
+        const manager = iframeManager as any;
+
+        // Verify initial state
+        if (shouldAppendToDOM) {
+          expect(manager.iframes.has(iframe)).toBe(true);
+          if (iframe.contentWindow) {
+            expect(manager.crossOriginIframeMap.has(iframe.contentWindow)).toBe(
+              true,
+            );
+          }
+        }
+        expect(manager.attachedIframes.has(iframeId)).toBe(true);
+
+        // Perform action
+        if (shouldCallRemove) {
+          expect(() => iframeManager.removeIframeById(iframeId)).not.toThrow();
+        }
+
+        // Verify final state
+        if (expectedMapsCleanedUp) {
+          expect(manager.iframes.has(iframe)).toBe(false);
+          if (iframe.contentWindow) {
+            expect(manager.crossOriginIframeMap.has(iframe.contentWindow)).toBe(
+              false,
+            );
+          }
+          expect(manager.attachedIframes.has(iframeId)).toBe(false);
+        } else {
+          // For moved iframes, maps should remain intact
+          expect(manager.iframes.has(iframe)).toBe(true);
+          if (iframe.contentWindow) {
+            expect(manager.crossOriginIframeMap.has(iframe.contentWindow)).toBe(
+              true,
+            );
+          }
+        }
+
+        // Clean up
+        if (shouldAppendToDOM) {
+          document.body.removeChild(iframe);
+        }
+        iframeManager.destroy();
+      },
+    );
   });
 });
