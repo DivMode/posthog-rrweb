@@ -1,3 +1,7 @@
+## 0.0.37 - 2026-01-27
+
+- fix(replay): cleanup iframe WeakMaps in removeIframeById to prevent memory leak (#123)
+
 ## 0.0.36 - 2026-01-21
 
 - fix(replay): clear weakmaps in destroy method (#122)
