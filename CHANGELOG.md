@@ -1,3 +1,7 @@
+## 0.0.38 - 2026-01-29
+
+- fix: must clean elements from maps on remove from DOM (#124)
+
 ## 0.0.37 - 2026-01-27
 
 - fix(replay): cleanup iframe WeakMaps in removeIframeById to prevent memory leak (#123)
