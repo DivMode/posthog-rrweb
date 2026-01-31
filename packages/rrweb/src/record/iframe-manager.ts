@@ -135,8 +135,19 @@ export class IframeManager {
     const iframeSourceWindow = message.source;
     if (!iframeSourceWindow) return;
 
-    const iframeEl = this.crossOriginIframeMap.get(message.source);
-    if (!iframeEl) return;
+    let iframeEl = this.crossOriginIframeMap.get(message.source);
+    if (!iframeEl) {
+      // contentWindow may have changed (site isolation process swap) or was null
+      // when addIframe was called. Search DOM for an iframe whose current
+      // contentWindow matches the PostMessage source.
+      iframeEl = this.findIframeByWindow(iframeSourceWindow);
+      if (!iframeEl) return;
+      // Update maps so future PostMessages hit the fast WeakMap path
+      this.crossOriginIframeMap.set(iframeSourceWindow, iframeEl);
+      if (!this.iframes.has(iframeEl)) {
+        this.iframes.set(iframeEl, true);
+      }
+    }
 
     const transformedEvent = this.transformCrossOriginEvent(
       iframeEl,
@@ -148,6 +159,42 @@ export class IframeManager {
         transformedEvent,
         crossOriginMessageEvent.data.isCheckout,
       );
+  }
+
+  /**
+   * Search for an iframe element by its contentWindow, including inside
+   * shadow DOMs. Standard querySelectorAll doesn't penetrate shadow roots,
+   * so we must explicitly check open shadowRoot and closed __rrClosedShadowRoot
+   * (captured by ShadowDomManager.patchAttachShadow).
+   *
+   * This handles Cloudflare Turnstile which renders its challenge iframe
+   * inside a closed shadow root.
+   */
+  private findIframeByWindow(
+    win: MessageEventSource,
+  ): HTMLIFrameElement | undefined {
+    // 1. Light DOM iframes
+    const iframes = document.querySelectorAll('iframe');
+    for (let i = 0; i < iframes.length; i++) {
+      if (iframes[i].contentWindow === win) return iframes[i];
+    }
+
+    // 2. Shadow DOM iframes (Turnstile uses closed shadow root)
+    const allElements = document.querySelectorAll('*');
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i];
+      const sr =
+        el.shadowRoot ||
+        (el as Element & { __rrClosedShadowRoot?: ShadowRoot })
+          .__rrClosedShadowRoot;
+      if (!sr) continue;
+      const shadowIframes = sr.querySelectorAll('iframe');
+      for (let j = 0; j < shadowIframes.length; j++) {
+        if (shadowIframes[j].contentWindow === win) return shadowIframes[j];
+      }
+    }
+
+    return undefined;
   }
 
   private transformCrossOriginEvent(
